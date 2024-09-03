@@ -11,6 +11,11 @@ Before running the script, ensure you have the following prerequisites installed
 
 You can install these dependencies using your distribution's package manager.
 
+More importantly, make sure to have the following storage requirements:
+
+- You must have at least __20GB__ space free on your `root` partition
+- You must have at least __750MB__ space free on your `boot` partition
+
 ## Features
 
 The script offers a variety of configuration options:
@@ -18,7 +23,7 @@ The script offers a variety of configuration options:
 - Auto-detection of CPU architecture for optimization.
 - Selection of CachyOS specific optimizations.
 - Configuration of CPU scheduler, LLVM LTO, tick rate, and more.
-- Support for various kernel configurations such as NUMA, NR_CPUS, Hugepages, and LRU.
+- Support for various kernel configurations such as KCFI, NUMA, NR_CPUS, Hugepages, and LRU.
 - Application of O3 optimization and performance governor settings.
 
 ## Usage
@@ -48,6 +53,14 @@ The script includes advanced configuration options for users who want to fine-tu
 - **LRU**: Configure the Least Recently Used memory management mechanism.
 - **O3 Optimization**: Apply O3 optimization for performance improvement.
 - **Performance Governor**: Set the CPU frequency scaling governor to performance.
+
+## Save and load configuration
+
+You can now save your kernel configuration in a config file and pass it as argument to override the default settings:
+
+```console
+sudo ./cachyos-deb.sh -c /path/to/config-file.conf
+```
 
 ## Install custom kernel
 
@@ -126,7 +139,7 @@ sudo update-initramfs -c -k <version>
 sudo update-grub
 ```
 
-6. Reboot
+5. Reboot
 
 ## Remove custom kernel
 
@@ -136,9 +149,38 @@ To remove the installed custom kernel, just run the following command:
 sudo apt remove --purge custom-kernel-*<version>*
 ```
 
+## Known Issues
+
+Here is a list of known issues and possible workarounds.
+
+### Very large generated `initramfs` file
+
+We are still working on it but enabling __Full LTO__ helped to reduce the size from 1GB to around 650MB.
+
+### Slow boot time
+
+This is due to the very large size of the `initramfs` file.
+
+## Roadmap
+
+Here is a list of scheduled changes in no particular order.
+
+* [ ] Fix broken ZFS module install
+* [ ] Improve kernel install script
+* [ ] Allow ZFS compilation with the custom kernel
+* [ ] Add support for PGO
+* [ ] Add support for LKRG
+* [ ] Reduce generated `initramfs` file size
+
 ## Contributing
 
 Contributions are welcome! If you have suggestions for improving the script or adding new features, please open an issue or submit a pull request.
+
+## Authors
+
+* [CachyOS](https://github.com/CachyOS) - Creators of the initial version
+* [Jiab77](https://github.com/Jiab77) - Fixes, Improvements, Testing
+* [Osevan](https://github.com/osevan) - Kernel improvements suggestions, Testing
 
 ## License
 
