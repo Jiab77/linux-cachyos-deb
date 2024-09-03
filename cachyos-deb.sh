@@ -29,7 +29,7 @@ _hugepage="always"
 _lru_config="standard"
 _o3_optimization="yes"
 _performance_governor="no"
-_nr_cpus="320"
+_nr_cpus="$(nproc)"
 _bbr3="yes"
 _march="native"
 _preempt="preempt"
@@ -154,6 +154,23 @@ load_config() {
     local CONFIG_FILE ; CONFIG_FILE="$1"
     [[ ! -r $CONFIG_FILE ]] && die "Unable to read given config file."
     source "$CONFIG_FILE"
+}
+
+# Save user defined config to file
+save_config() {
+    local INDEX=0
+    local MAX=16
+    local SCRIPT_FILE ; SCRIPT_FILE="$(basename "$0")"
+    local SCRIPT_NAME ; SCRIPT_NAME="${SCRIPT_FILE/.sh/}"
+    local CONFIG_FILE ; CONFIG_FILE="${SCRIPT_NAME}.conf"
+
+    echo "# User defined config" > "$CONFIG_FILE"
+    for V in $(grep "# Initialize variables to store user choices" -A $MAX "$0" | grep -v "#" | cut -d"=" -f1) ; do
+        ((INDEX++))
+        eval X='$'$V
+        echo "$V=$X"
+        [[ $INDEX -eq $MAX ]] && break
+    done | tee -a "$CONFIG_FILE"
 }
 
 # Original function used in the CachyOS mainline
@@ -773,7 +790,8 @@ while :; do
         "9" "Configure Hugepages" \
         "10" "Configure System Optimizations" \
         "11" "COMPILE KERNEL" \
-        "12" "Exit" 3>&1 1>&2 2>&3)
+        "12" "SAVE CONFIGURATION" \
+        "13" "Exit" 3>&1 1>&2 2>&3)
 
     exitstatus=$?
     if [ $exitstatus != 0 ]; then
@@ -794,7 +812,8 @@ while :; do
     9) configure_hugepages ;;
     10) configure_system_optimizations ;;
     11) do_things ;;
-    12) break ;;
+    12) save_config ;;
+    13) break ;;
     *) echo "Invalid Option" ;;
     esac
 done
