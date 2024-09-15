@@ -28,7 +28,7 @@ The script offers a variety of configuration options:
 
 ## Usage
 
-To use the [script](kermel-prepare), follow these steps:
+To use the [script](kernel-prepare), follow these steps:
 
 1. Clone the repository to your local machine.
 2. Make the two scripts executable with `chmod -c +x kernel-* `.
