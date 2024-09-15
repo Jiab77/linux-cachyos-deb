@@ -86,6 +86,24 @@ function get_fs_size() {
   lsblk -npr $OPT_ARGS -x MOUNTPOINT -o $FIELD_SIZE,MOUNTPOINT | grep -m1 "$FS_NAME" | cut -d" " -f1
 }
 
+# Imported 'set_lto_args' method from the 'bash-funcs' project
+function set_lto_args() {
+  if [[ ! -r /etc/profile.d/lto.sh ]]; then
+    echo 'export CC=clang' > /tmp/lto.sh
+    echo 'export LD=ld.lld' >> /tmp/lto.sh
+    echo 'export LLVM=1' >> /tmp/lto.sh
+    echo 'export LLVM_IAS=1' >> /tmp/lto.sh
+    sudo mv -v /tmp/lto.sh /etc/profile.d/
+  fi
+}
+
+# Imported 'remove_lto_args' method from the 'bash-funcs' project
+function remove_lto_args() {
+  if [[ -r /etc/profile.d/lto.sh ]]; then
+    sudo rm -fv /etc/profile.d/lto.sh
+  fi
+}
+
 # Helper for debugging non functional menu entries
 debug_menu() {
     local SCRIPT_FILE ; SCRIPT_FILE="$(basename "$0")"
@@ -550,12 +568,16 @@ do_things() {
     # middle number
     _mid=$(echo $_kv_name | grep -oP '^\d+\.\K[^\.]+')
 
-    # download kernel to linux.tar.xz
-    wget -c $_kv_url -O linux.tar.xz
-    # extract kernel
-    tar -xf linux.tar.xz
-    # enter kernel directory
+    # remove existing kernel archive
+    rm -f $_ka_name
 
+    # download kernel to linux.tar.xz
+    wget -c $_kv_url -O $_ka_name
+
+    # extract kernel
+    tar -xf $_ka_name
+
+    # enter kernel directory
     cd linux-$_kv_name
 
     # get cachyos .config
@@ -626,6 +648,7 @@ do_things() {
     # Apply LLVM LTO configuration
     case "$_llvm_lto_selection" in
     thin)
+	set_lto_args
         scripts/config -e LTO_CLANG_THIN
         export CC=clang
         export LD=ld.lld
@@ -633,13 +656,17 @@ do_things() {
         export LLVM_IAS=1
     ;;
     full)
+	set_lto_args
         scripts/config -e LTO_CLANG_FULL
         export CC=clang
         export LD=ld.lld
         export LLVM=1
         export LLVM_IAS=1
     ;;
-    none) scripts/config -d LTO_CLANG_THIN -d LTO_CLANG_FULL ;;
+    none)
+	remove_lto_args
+	scripts/config -d LTO_CLANG_THIN -d LTO_CLANG_FULL
+    ;;
     esac
 
     # Apply KCFI configuration
@@ -734,6 +761,7 @@ if [ -n "$1" ]; then
         echo -e "\nFlags:"
         echo -e "  -b | --build\t\t\tBuild debian packages only"
         echo -e "  -c | --config <config-file>\tLoad user defined config file"
+        echo -e "  -r | --run <config-file>\tRun compilation with user defined config file"
         echo
         exit 0
         ;;
@@ -745,6 +773,12 @@ if [ -n "$1" ]; then
         shift
         load_config "$1"
         ;;
+    --run | -r)
+        shift
+        load_config "$1"
+	do_things
+	exit $?
+        ;;
     esac
 fi
 
@@ -753,8 +787,12 @@ _kv_url=$(wget -qO- https://www.kernel.org | grep -A 1 'id="latest_link"' | awk 
 
 # extract only the version number
 _kv_name=$(echo $_kv_url | grep -oP 'linux-\K[^"]+')
+
 # remove the .tar.xz extension
 _kv_name=$(basename $_kv_name .tar.xz)
+
+# define kernel archive name
+_ka_name="linux.tar.xz"
 
 # check filesystem size before making any changes
 check_fs_size
