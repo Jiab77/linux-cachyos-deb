@@ -28,16 +28,22 @@ The script offers a variety of configuration options:
 
 ## Usage
 
-To use the script, follow these steps:
+To use the [script](kermel-prepare), follow these steps:
 
 1. Clone the repository to your local machine.
-2. Make the script executable with `chmod +x cachyos-deb.sh`.
-3. Run the script with `./cachyos-deb.sh`.
+2. Make the two scripts executable with `chmod -c +x kernel-* `.
+3. Run the script with `sudo ./kernel-prepare`.
 4. Follow the on-screen prompts to select your desired kernel version and configurations, for:
    - Choose the kernel version.
    - Enable or disable CachyOS optimizations.
    - Configure the CPU scheduler, LLVM LTO, tick rate, NR_CPUS, Hugepages, LRU, and other system optimizations.
    - Select the preempt type and tick type for further system tuning.
+
+To see other usage instructions, simply run thw following command:
+
+```console
+./kernel-prepare --help
+```
 
 ## Advanced Configurations
 
@@ -59,7 +65,15 @@ The script includes advanced configuration options for users who want to fine-tu
 You can now save your kernel configuration in a config file and pass it as argument to override the default settings:
 
 ```console
-sudo ./cachyos-deb.sh -c /path/to/config-file.conf
+sudo ./kernel-prepare -c /path/to/config-file.conf
+```
+
+## Load configuration and run the compilation process directly
+
+You can also now pass your saved configuration file and run the compilation process directly without displaying the `whiptail` based menu:
+
+```console
+sudo ./kernel-prepare -r /path/to/config-file.conf
 ```
 
 ## Install custom kernel
@@ -68,16 +82,16 @@ Once you have compiled your custom kernel, you can install it manually or use th
 
 ### Automatic installation
 
-Once the custom kernel compiled and `.deb` files created, you can install it with the [cachyos-deb-install.sh](cachyos-deb-install.sh) script:
+Once the custom kernel compiled and `.deb` files created, you can install it with the [kernel-install](kernel-install) script:
 
 ```console
-sudo ./cachyos-deb-install.sh
+sudo ./kernel-install -k <version>
 ```
 
 Or check usage instructions that way:
 
 ```console
-./cachyos-deb-install.sh --help
+./kernel-install --help
 ```
 
 > You can also use the shorthand flag `-h` instead if you prefer.
@@ -149,6 +163,12 @@ To remove the installed custom kernel, just run the following command:
 sudo apt remove --purge custom-kernel-*<version>*
 ```
 
+Or you can use the dedicated script that way:
+
+```console
+sudo ./kernel-install -r -k <version>
+```
+
 ## Known Issues
 
 Here is a list of known issues and possible workarounds.
@@ -161,10 +181,26 @@ We are still working on it but enabling __Full LTO__ helped to reduce the size f
 
 This is due to the very large size of the `initramfs` file.
 
+### Missing LTO flags for compiling kernel modules
+
+When compiling latest NVIDIA kernel modules for the newly installed kernel, it may not works and complain about incompatible kernel stack due to the fact that the kernel is compiled with `clang` instead of `cc` when LTO flags are enabled.
+
+To workaround this issue, the required environment variables has been added into a new file created in the `/etc/profile.d` folder named `lto.sh`.
+
+### Broken APT state / APT kernel update issues
+
+When installing the custom kernel inside a very small `/boot` partition, the original `update-initramfs` script will fail as it will try to create a new `initrd` file inside the `/boot` that will simply end up without any free space and tbe APT process will fail and print an error message saying that there is not enough storage space on the `/boot` partition.
+
+To workaround this issue, we've made a patched `update-initramfs` script that you can find [here](update-initramfs-mod). The patched file will be copied to `/usr/sbin`, the original script will be renamed to `update-initramfs.original` and a symlink will be created from `update-initramfs-mod` to `update-initramfs`.
+
+That way, every APT hooks that will call the `update-initramfs` script will no longer fail anymore.
+
 ## Roadmap
 
 Here is a list of scheduled changes in no particular order.
 
+* [X] Fix LTO related compilation issues
+* [X] Fix `update-initramfs` command related issues
 * [ ] Fix broken ZFS module install
 * [ ] Improve kernel install script
 * [ ] Allow ZFS compilation with the custom kernel
@@ -180,7 +216,7 @@ Contributions are welcome! If you have suggestions for improving the script or a
 
 * [CachyOS](https://github.com/CachyOS) - Creators of the initial version
 * [Jiab77](https://github.com/Jiab77) - Fixes, Improvements, Testing
-* [Osevan](https://github.com/osevan) - Kernel improvements suggestions, Testing
+* [Osevan](https://github.com/osevan) - Code and Kernel improvements suggestions, Testing
 
 ## License
 
